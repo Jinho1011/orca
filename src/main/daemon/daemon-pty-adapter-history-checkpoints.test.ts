@@ -760,15 +760,20 @@ describe('DaemonPtyAdapter (IPtyProvider)', () => {
       )
     })
 
-    it('returns cold restore data when disk history has unclean shutdown', async () => {
+    // The recovered folder wins while it exists; one deleted since the crash yields to the request's.
+    it.each([
+      { deleted: false, source: 'recovered-history' },
+      { deleted: true, source: 'request' }
+    ])('returns cold restore data after an unclean shutdown (deleted: $deleted)', async (c) => {
       // Simulate a previous daemon crash: write history files without endedAt
       const sessionId = 'cold-restore-test'
       const sessionDir = join(historyDir, getHistorySessionDirName(sessionId))
       mkdirSync(sessionDir, { recursive: true })
+      const startedCwd = c.deleted ? historyDir : dir
       writeFileSync(
         join(sessionDir, 'meta.json'),
         JSON.stringify({
-          cwd: '/projects/myapp',
+          cwd: c.deleted ? join(dir, 'deleted') : dir,
           cols: 120,
           rows: 40,
           startedAt: '2026-04-15T10:00:00Z',
@@ -780,15 +785,16 @@ describe('DaemonPtyAdapter (IPtyProvider)', () => {
 
       historyAdapter = new DaemonPtyAdapter({ socketPath, tokenPath, historyPath: historyDir })
 
-      const result = await historyAdapter.spawn({ cols: 80, rows: 24, sessionId })
+      const result = await historyAdapter.spawn({ cols: 80, rows: 24, sessionId, cwd: historyDir })
       expect(result.id).toBe(sessionId)
       expect(result.coldRestore).toBeDefined()
       expect(result.coldRestore!.scrollback).toContain('Server running')
-      expect(result.coldRestore!.cwd).toBe('/projects/myapp')
+      expect(result.coldRestore!.cwd).toBe(startedCwd)
+      expect(result.startupCwdSource).toBe(c.source)
       expect(result.coldRestore).toMatchObject({ cols: 120, rows: 40 })
       expect(lastSpawnOpts).toMatchObject({
         sessionId,
-        cwd: '/projects/myapp',
+        cwd: startedCwd,
         cols: 120,
         rows: 40
       })

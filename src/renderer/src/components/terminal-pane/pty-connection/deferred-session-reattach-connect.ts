@@ -8,6 +8,7 @@ import { holdForNewerDaemon } from './newer-daemon-hold-pane'
 import { NEWER_DAEMON_HOLD_ERROR } from '../../../../../shared/newer-daemon-hold'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../shared/layout-owner-switch'
 import { holdInPlaceResumeUntilSettled } from './in-place-resume-hold'
+import { writeStartupCwdFallbackNotice } from './startup-cwd-fallback-notice'
 
 import {
   awaitAgentStatusStartupSnapshot,
@@ -184,6 +185,14 @@ function connectDeferredSessionReattach(
         coldRestoreStartup,
         outputCallbacks.generation
       )
+      if (accepted) {
+        // After the restore paint and before held live bytes, so the line reads in order.
+        writeStartupCwdFallbackNotice(
+          session,
+          session.transport.getPtyId() ?? deferredReattachSessionId,
+          Boolean(result && typeof result === 'object' && result.startupCwdFallback)
+        )
+      }
       session.finishReattachLiveDataDeferral(accepted, outputCallbacks.generation)
       const gen = await preSignalPromise
       if (typeof gen === 'number') {

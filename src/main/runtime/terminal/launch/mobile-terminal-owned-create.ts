@@ -225,7 +225,8 @@ export abstract class OrcaRuntimeWithCreateRuntimeOwnedMobileSessionTerminal ext
       ptyId: livePty.pty.ptyId,
       incarnationId: livePty.pty.incarnationId,
       title: terminal.title ?? livePty.pty.title ?? 'Terminal',
-      ...(cwd ? { startupCwd: cwd } : {}),
+      // The workspace root is spelled by omission, so a fallback start saves no folder.
+      ...(cwd && !terminal.startupCwdFallback ? { startupCwd: cwd } : {}),
       ...(opts.launchAgent ? { launchAgent: opts.launchAgent } : {}),
       ...(opts.viewMode ? { viewMode: opts.viewMode } : {}),
       parentLayout,
@@ -301,7 +302,8 @@ export abstract class OrcaRuntimeWithCreateRuntimeOwnedMobileSessionTerminal ext
     return {
       tab: created,
       publicationEpoch: result.publicationEpoch,
-      snapshotVersion: result.snapshotVersion
+      snapshotVersion: result.snapshotVersion,
+      ...(terminal.startupCwdFallback ? { startupCwdFallback: 'workspace-root' as const } : {})
     }
   }
 }

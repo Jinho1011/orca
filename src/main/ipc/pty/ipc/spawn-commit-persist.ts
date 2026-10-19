@@ -15,17 +15,22 @@ import { resolveCommittedPtySize, type PtyGrid } from '../delivery/attached-pty-
 import { discardUnpersistedPtySpawn } from '../pane/spawn-registration'
 import { spawnCommitBindingOrigin } from '../../../persistence/loading-store/pty-binding-span'
 import type { PtyIpcSpawnState } from './spawn-state'
+import { startupCwdFallbackOutcome } from '../spawn-startup-target'
 import { parseTerminalPanePlacement } from '../../../../shared/terminal-pane-placement'
 
 export async function persistPtyIpcSpawnCommit(ctx: PtyIpcSpawnState): Promise<PtyGrid> {
   const args = ctx.args
+  // Why: only a proven fallback start heals the saved folder; an attach keeps what was asked for.
+  const startupCwd = startupCwdFallbackOutcome(ctx.startupCwdFallback, ctx.result)
+    ? ctx.cwd
+    : ctx.requestedCwd
   try {
     ctx.stablePaneBindingPersisted = await persistAdmittedStablePaneBinding({
       store: ctx.deps.store,
       owner: ctx.stablePaneOwner,
       result: ctx.result,
       worktreeId: args.worktreeId,
-      startupCwd: ctx.cwd
+      startupCwd
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'terminal_pane_owner_changed') {
@@ -57,7 +62,7 @@ export async function persistPtyIpcSpawnCommit(ctx: PtyIpcSpawnState): Promise<P
         leafId: ctx.validatedLeafId,
         ptyId: ctx.result.id,
         ...(ctx.result.incarnationId ? { incarnationId: ctx.result.incarnationId } : {}),
-        ...(ctx.cwd ? { startupCwd: ctx.cwd } : {}),
+        ...(startupCwd ? { startupCwd } : {}),
         ...(placement ? { placement } : {}),
         origin: spawnCommitBindingOrigin(ctx.result)
       }

@@ -16,6 +16,7 @@ import {
 import { startDeferredSessionReattachUnlessHiddenAgentResume } from './hidden-agent-resume-deferral'
 
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
+import { writeStartupCwdFallbackNotice } from './startup-cwd-fallback-notice'
 
 export function runDeferredSessionReattachChoice(session: ConnectPanePtySession): void {
   // An explicit replacement owns its startup; saved recovery state must not substitute another agent.
@@ -142,6 +143,7 @@ export function runDeferredSessionReattachChoice(session: ConnectPanePtySession)
         updateTabPtyId: 'if-missing',
         sampleVisibleForegroundAgent: true
       })
+      writeStartupCwdFallbackNotice(session, attachedPtyId, false)
       if (attachPtyId === eagerLivePtyId || isRemoteRuntimePtyId(attachedPtyId)) {
         session.registerPaneSerializerFor(attachedPtyId)
       }

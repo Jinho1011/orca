@@ -33,6 +33,7 @@ import { resolvePaneSpawnReservation } from '../pane/spawn-reservation'
 import { admitProviderReattachLaunchIdentity } from '../pane/launch-authority'
 import { spawnCommitBindingOrigin } from '../../../persistence/loading-store/pty-binding-span'
 import type { RuntimePtySpawnState } from './spawn-state'
+import { startupCwdFallbackOutcome } from '../spawn-startup-target'
 import { commitPtyWithOpenCodePromptIntent } from '../../../opencode/opencode-startup-prompt-owner'
 import {
   admitPtyReattachOwnership,
@@ -47,6 +48,9 @@ export async function commitRuntimePtySpawn(ctx: RuntimePtySpawnState) {
 async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
   const args = ctx.args
   admitPtyReattachOwnership(ctx.deps.runtime, ctx.result)
+  const startupCwdFallback = startupCwdFallbackOutcome(ctx.startupCwdFallback, ctx.result)
+  // Why: only a proven fallback start heals the saved folder; an attach keeps what was asked for.
+  const savedStartupCwd = startupCwdFallback ? ctx.cwd : ctx.requestedCwd
   const providerReattachLaunchIdentity = admitProviderReattachLaunchIdentity(ctx.result)
   if (
     isNativeWindowsLocalPtySpawn({
@@ -66,7 +70,7 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
       owner: ctx.stablePaneOwner,
       result: ctx.result,
       worktreeId: ctx.hostSessionBinding?.worktreeId,
-      startupCwd: ctx.cwd
+      startupCwd: savedStartupCwd
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'terminal_pane_owner_changed') {
@@ -147,7 +151,7 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
         // The runtime wrote the pane before spawning; a pane gone by now was closed meanwhile.
         mayCreate: false,
         ...(ctx.result.incarnationId ? { incarnationId: ctx.result.incarnationId } : {}),
-        ...(ctx.cwd ? { startupCwd: ctx.cwd } : {}),
+        ...(savedStartupCwd ? { startupCwd: savedStartupCwd } : {}),
         ...(expectedSourceBinding ? { expectedSourceBinding } : {}),
         ...(placement ? { placement } : {}),
         origin: spawnCommitBindingOrigin(ctx.result, expectedSourceBinding)
@@ -294,7 +298,8 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
           }
         }
       : {}),
-    ...(ctx.result.agentSessionEnsure ? { agentSessionEnsure: ctx.result.agentSessionEnsure } : {})
+    ...(ctx.result.agentSessionEnsure ? { agentSessionEnsure: ctx.result.agentSessionEnsure } : {}),
+    ...(startupCwdFallback ? { startupCwdFallback } : {})
   }
   resolvePaneSpawnReservation(ctx.paneSpawnReservationKey, ctx.paneSpawnReservation, {
     ...ctx.result,

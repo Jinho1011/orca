@@ -126,10 +126,9 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
         }
         let result: Awaited<ReturnType<NonNullable<dependencies.RuntimePtyController['spawn']>>>
         try {
-          const { launchAgent } = launchOpts
           launchOpts.onPtySpawnDispatched?.({
             launchConfig: effectiveLaunchConfig,
-            launchAgent
+            launchAgent: launchOpts.launchAgent
           })
           result = await dependencies.spawnInAdmittedPane(this.store, this.ptyController, {
             ...initialSize,
@@ -191,6 +190,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
           reportPtySpawnCommitted()
         }
         restoreHint.consume()
+        cwd = result.startupCwdFallback?.cwd ?? cwd
         // Why here: refused before a handle, snapshot or reveal could pose the live PTY as new.
         const adoptedStablePane = dependencies.admitStablePaneAdoption(result, launchOpts)
         if (result.agentSessionEnsure) {
@@ -265,6 +265,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
               ptyId: result.id,
               title: launchOpts.title ?? null,
               ...(cwd !== workspace.path ? { cwd } : {}),
+              ...(result.startupCwdFallback ? { startupCwdFallback: true as const } : {}),
               ...(effectiveLaunchConfig ? { launchConfig: effectiveLaunchConfig } : {}),
               ...(launchToken ? { launchToken } : {}),
               ...(launchOpts.launchAgent ? { launchAgent: launchOpts.launchAgent } : {}),
@@ -297,6 +298,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
             ? { agentSessionDisposition: result.agentSessionEnsure.disposition }
             : {}),
           ...(adoptedStablePane ? { isReattach: true as const } : {}),
+          ...(result.startupCwdFallback ? { startupCwdFallback: result.startupCwdFallback } : {}),
           ...(warning ? { warning } : {})
         }
       } finally {

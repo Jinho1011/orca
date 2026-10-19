@@ -29,7 +29,6 @@ import { installPtyRuntimeController } from './runtime/controller'
 import { installPtySnapshotIpcHandlers } from './ipc/snapshot'
 import {
   assertWorkspaceAcceptsNewPty as assertWorkspaceAcceptsNewPtyImpl,
-  localStartupCwdDirectoryExists,
   resolvePtySpawnStartupCwd as resolvePtySpawnStartupCwdImpl
 } from './host-env/spawn-cwd'
 import {
@@ -286,7 +285,6 @@ export function registerPtyHandlers(
     adoptStablePane: adoptStablePaneBound,
     assertWorkspaceAcceptsNewPty,
     resolvePtySpawnStartupCwd,
-    localStartupCwdDirectoryExists,
     prepareCodexResumeHome: prepareCodexResumeHomeBound,
     noCodexResumeLaunch,
     resolveCodexResumeLaunch,

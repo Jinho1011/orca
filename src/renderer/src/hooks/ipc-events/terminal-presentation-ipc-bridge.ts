@@ -11,6 +11,7 @@ import { insertUnifiedTabAfterAnchor } from '@/lib/unified-tab-anchor-insertion'
 import { tryMakePaneKey } from './agent-status-routing'
 import { wasAgentLaunchPaneClosedByUser } from '@/lib/agent-launch-pane-closes'
 import { revealWorkspaceSurface } from '@/lib/workspace-surface-reveal'
+import { oweStartupCwdFallbackNotice } from '@/components/terminal-pane/pty-connection/startup-cwd-fallback-notice'
 import { useAppStore } from '../../store'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../shared/layout-owner-switch'
 import {
@@ -39,6 +40,7 @@ export function registerTerminalPresentationIpcBridge(unsubs: (() => void)[]): v
         shellOverride,
         title,
         ptyId,
+        startupCwdFallback,
         activate,
         focus,
         presentation,
@@ -252,6 +254,9 @@ export function registerTerminalPresentationIpcBridge(unsubs: (() => void)[]): v
               ...(launchToken ? { launchToken } : {}),
               ...(launchAgent ? { launchAgent } : {})
             })
+          }
+          if (ptyId && startupCwdFallback) {
+            oweStartupCwdFallbackNotice(ptyId)
           }
           if (ptyId && terminalPresentation === 'background') {
             requestBackgroundTerminalWorktreeMount({ worktreeId, tabIds: [tab.id] })

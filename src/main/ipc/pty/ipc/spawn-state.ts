@@ -1,3 +1,4 @@
+import type { StartupCwdFallback } from '../../../../shared/startup-cwd-fallback'
 import type {
   IPtyProvider,
   PtySpawnOptions,
@@ -26,7 +27,8 @@ export type PtyIpcSpawnState = {
   reattachedCodexHomeRoutes: Map<string, CodexPaneHomeRoute | null>
   cwd: string | undefined
   prevalidatedCwd: string | undefined
-  startupCwdFallback: { kind: 'worktree'; cwd: string } | undefined
+  requestedCwd: string | undefined
+  startupCwdFallback: StartupCwdFallback | undefined
   earlyStablePaneOwner: StablePaneOwner | null
   earlyWorktreeId: string | undefined
   paneSpawnReservationKey: string | null
@@ -108,6 +110,7 @@ export function createPtyIpcSpawnState(
     reattachedCodexHomeRoutes: new Map(),
     cwd: undefined,
     prevalidatedCwd: undefined,
+    requestedCwd: undefined,
     startupCwdFallback: undefined,
     earlyStablePaneOwner: null,
     earlyWorktreeId: undefined,

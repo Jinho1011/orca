@@ -181,7 +181,10 @@ export function startParityLanes(
       throw args.spawnError
     }
     // A fresh id per spawn, so one case's hidden mark never reads into the next.
-    return { id: options.sessionId ?? `remote-pty-${++remoteSpawns}` }
+    return {
+      id: options.sessionId ?? `remote-pty-${++remoteSpawns}`,
+      startupCwdSource: 'request' as const
+    }
   })
   suite.installDaemonTestProvider({ spawn: provider })
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handlers read the window, runtime, settings and store members these fakes define.

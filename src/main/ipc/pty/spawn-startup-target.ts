@@ -5,6 +5,7 @@ import {
   type LocalWindowsTerminalRuntimeOptions
 } from '../../../shared/local-windows-terminal-runtime'
 import type { ProjectExecutionRuntimeResolution } from '../../../shared/project-execution-runtime'
+import type { StartupCwdFallback } from '../../../shared/startup-cwd-fallback'
 import type { TerminalStartupCwdMissingDirFallback } from '../../../shared/terminal-startup-cwd'
 import { isWslUncPath, toWindowsWslPath } from '../../../shared/wsl-paths'
 import type { CodexAccountSelectionTarget } from '../../codex-accounts/runtime-selection'
@@ -14,9 +15,11 @@ import {
   resolveLocalPtyOptions,
   type ProjectRuntimeResolutionStore
 } from '../../local-project-runtime-resolution'
+import type { PtySpawnResult } from '../../providers/pty-provider-contract'
 import { normalizeWindowsTerminalCwd } from '../../providers/windows-shell-args'
 import { wslUncDirectoryExistsAsync } from '../../wsl'
 import { getCodexSelectionTargetForPty } from './host-env/codex-home'
+import { localStartupCwdDirectoryExists } from './host-env/startup-cwd-directory-exists'
 
 // TEMPORARY (row 13b removes it): the window uses the renderer's runtime; the host reads the store.
 export type PtySpawnProjectRuntimeSource =
@@ -27,7 +30,9 @@ export type PtySpawnStartupTarget = {
   cwd: string | undefined
   /** Already proven to exist by the WSL probe. */
   prevalidatedCwd?: string
-  startupCwdFallback?: { kind: 'worktree'; cwd: string }
+  startupCwdFallback?: StartupCwdFallback
+  /** The cwd before any fallback; a reattach keeps it as the saved start folder. */
+  requestedCwd: string | undefined
   terminalRuntimeOptions: LocalWindowsTerminalRuntimeOptions
   expectedWslDistro: string | null
   codexSelectionTarget: CodexAccountSelectionTarget
@@ -42,8 +47,8 @@ type PtySpawnStartupArgs = {
   /** The PTY an agent launch's command was quoted for. */
   plannedPty?: LocalWindowsTerminalRuntimeOptions
   projectRuntimeSource: PtySpawnProjectRuntimeSource
-  /** TEMPORARY (row 13a removes it): only window starts fall back to the root of a missing cwd. */
-  missingCwdFallback?: { directoryExists: (path: string) => boolean }
+  /** A known live pane never uses the cwd, so it skips the existence probe. */
+  preAdopted: boolean
   getSettings: (() => Parameters<typeof resolveLocalPtyOptions>[0]) | undefined
   resolveStartupCwd: (
     worktreeId: string | undefined,
@@ -66,9 +71,9 @@ export async function resolvePtySpawnStartupTarget(
       args.shellOverride,
       process.env.COMSPEC || 'powershell.exe'
     )
-  const startup = args.missingCwdFallback
-    ? await resolveStartupCwdWithFallback(args, args.missingCwdFallback, terminalRuntimeOptions)
-    : { cwd: args.resolveStartupCwd(args.worktreeId, args.cwd) }
+  const startup = args.preAdopted
+    ? { cwd: args.resolveStartupCwd(args.worktreeId, args.cwd) }
+    : await resolveStartupCwdWithFallback(args, terminalRuntimeOptions)
   const expectedWslDistro =
     resolveWslSessionContext({
       cwd: startup.cwd,
@@ -78,6 +83,9 @@ export async function resolvePtySpawnStartupTarget(
     })?.distro ?? null
   return {
     ...startup,
+    requestedCwd: startup.startupCwdFallback
+      ? args.resolveStartupCwd(args.worktreeId, args.cwd)
+      : startup.cwd,
     terminalRuntimeOptions,
     expectedWslDistro,
     codexSelectionTarget: getCodexSelectionTargetForPty(
@@ -88,9 +96,18 @@ export async function resolvePtySpawnStartupTarget(
   }
 }
 
+/** Reported only for a process proven started at the request's cwd, never for an attach. */
+export function startupCwdFallbackOutcome(
+  fallback: StartupCwdFallback | undefined,
+  result: Pick<PtySpawnResult, 'startupCwdSource' | 'isReattach'>
+): StartupCwdFallback | undefined {
+  return fallback && result.startupCwdSource === 'request' && result.isReattach !== true
+    ? fallback
+    : undefined
+}
+
 async function resolveStartupCwdWithFallback(
   { worktreeId, resolveStartupCwd, ...args }: PtySpawnStartupArgs,
-  fallback: { directoryExists: (path: string) => boolean },
   runtimeOptions: LocalWindowsTerminalRuntimeOptions
 ): Promise<Pick<PtySpawnStartupTarget, 'cwd' | 'prevalidatedCwd' | 'startupCwdFallback'>> {
   const isPosixStartupCwd = args.cwd?.startsWith('/') === true
@@ -117,14 +134,14 @@ async function resolveStartupCwdWithFallback(
     const validationCwd = toWindowsWslPath(initiallyResolvedStartupCwd, startupWslContext.distro)
     wslStartupCwdExists = isWslUncPath(validationCwd)
       ? await wslUncDirectoryExistsAsync(validationCwd)
-      : fallback.directoryExists(validationCwd)
+      : localStartupCwdDirectoryExists(validationCwd)
     if (wslStartupCwdExists === true) {
       prevalidatedCwd = validationCwd
     }
     if (wslStartupCwdExists === false && startupWorkspaceCwd) {
       wslWorkspaceCwdExists = isWslUncPath(startupWorkspaceCwd)
         ? await wslUncDirectoryExistsAsync(startupWorkspaceCwd)
-        : fallback.directoryExists(startupWorkspaceCwd)
+        : localStartupCwdDirectoryExists(startupWorkspaceCwd)
       if (wslWorkspaceCwdExists === true) {
         prevalidatedCwd = startupWorkspaceCwd
       }
@@ -145,7 +162,7 @@ async function resolveStartupCwdWithFallback(
               ? false
               : startupWslContext && path === startupWorkspaceCwd
                 ? wslWorkspaceCwdExists === true
-                : fallback.directoryExists(
+                : localStartupCwdDirectoryExists(
                     process.platform === 'win32' ? normalizeWindowsTerminalCwd(path) : path
                   ),
           onFallbackToWorkspaceRoot: () => {

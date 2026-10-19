@@ -79,6 +79,7 @@ export async function buildRuntimePtySpawnOptions(
     envToDelete: deletions.envToDelete,
     launchCommand: ctx.launchCommand,
     cwd: ctx.cwd,
+    prevalidatedCwd: ctx.prevalidatedCwd,
     isDaemonHostSpawn: ctx.isDaemonHostSpawn,
     preAdoptedStablePane: ctx.preAdoptedStablePane !== null,
     isNewSession: ctx.isNewDaemonSession,

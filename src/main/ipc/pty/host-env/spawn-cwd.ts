@@ -1,7 +1,5 @@
-import { statSync } from 'node:fs'
 import type { Store } from '../../../persistence'
 import { parseWorkspaceKey } from '../../../../shared/workspace-scope'
-import { isWslUncPath } from '../../../../shared/wsl-paths'
 import {
   resolveTerminalStartupCwdForWorkspace,
   type TerminalStartupCwdMissingDirFallback
@@ -68,16 +66,4 @@ export function resolvePtySpawnStartupCwd(
     resolveFolderWorkspacePath: (folderWorkspaceId) =>
       store?.getFolderWorkspace(folderWorkspaceId)?.folderPath
   })
-}
-
-export function localStartupCwdDirectoryExists(path: string): boolean {
-  // Why: Win32 statSync on \\wsl.localhost 9P shares can falsely report ENOENT; defer to the provider's WSL-aware validation.
-  if (isWslUncPath(path)) {
-    return true
-  }
-  try {
-    return statSync(path).isDirectory()
-  } catch {
-    return false
-  }
 }

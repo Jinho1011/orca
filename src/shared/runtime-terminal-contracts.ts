@@ -7,6 +7,7 @@ import type { ExecutionHostId } from './execution-host'
 import type { PtyIncarnationId } from './pty-incarnation'
 import type { RuntimeListingHostScope } from './runtime-listing-host-scope'
 import type { RuntimeMobileSessionTabsResult } from './runtime-session-contracts'
+import type { StartupCwdFallback } from './startup-cwd-fallback'
 import type { TabGroupLayoutNode } from './tab-types'
 import type { TerminalExitCause } from './terminal-exit-cause'
 import type { TerminalPaneLayoutNode } from './terminal-tab-types'
@@ -288,6 +289,8 @@ export type RuntimeTerminalCreate = {
   isReattach?: true
   /** Spawn process identity for host-internal ownership proof. */
   processId?: number
+  /** Host-internal: the requested folder was gone, so the process started at the workspace root. */
+  startupCwdFallback?: StartupCwdFallback
 }
 
 export type RuntimeTerminalSplit = {

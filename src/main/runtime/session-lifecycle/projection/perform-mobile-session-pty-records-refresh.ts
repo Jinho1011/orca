@@ -12,6 +12,7 @@ import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../../shared/constants'
 import type { RuntimeNavigationTarget } from '../../../../shared/runtime-navigation'
 import type { TabActivationIntent } from '../../../../shared/tab-activation-intent'
 import type { RuntimeMobileSessionTabsResult } from '../../../../shared/runtime-types'
+import type { RuntimeMobileSessionTabActivationResult } from '../../../../shared/runtime-types'
 import type { ResolvedWorktree } from '../../runtime-worktree-path-identity'
 import { includeTargetResolvedWorktree } from '../../runtime-worktree-path-identity'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
@@ -140,7 +141,7 @@ export abstract class OrcaRuntimeWithPerformMobileSessionPtyRecordsRefresh exten
       navigation?: RuntimeNavigationTarget
       intent?: TabActivationIntent
     } = {}
-  ): Promise<RuntimeMobileSessionTabsResult> {
+  ): Promise<RuntimeMobileSessionTabActivationResult> {
     const navigation = opts.navigation ?? (opts.notifyClients === false ? 'caller' : 'all')
     const targetsHost = navigationTargetsHost(navigation)
     const explicitWorktreeId = this.getExplicitSessionWorktreeIdSelector(worktreeSelector)
@@ -226,6 +227,7 @@ export abstract class OrcaRuntimeWithPerformMobileSessionPtyRecordsRefresh exten
             }
           }
         }
+        let startupCwdFallback: RuntimeMobileSessionTabActivationResult['startupCwdFallback']
         try {
           await this.createRuntimeOwnedMobileSessionTerminal(worktreeId, targetsHost, undefined, {
             identity: {
@@ -249,7 +251,7 @@ export abstract class OrcaRuntimeWithPerformMobileSessionPtyRecordsRefresh exten
             launchRuntime: agentStartup.launchRuntime,
             targetGroupId,
             ...(automatic ? { refuseSleptWorktree: true } : {})
-          })
+          }).then((created) => (startupCwdFallback = created.startupCwdFallback))
         } catch (err) {
           if (automatic && isWorktreeTerminalsSleepingError(err)) {
             // Why: the host slept the worktree while this probe waited for the spawn lock.
@@ -267,12 +269,13 @@ export abstract class OrcaRuntimeWithPerformMobileSessionPtyRecordsRefresh exten
           }
           throw err
         }
-        return this.applyMobileSessionTabNavigation(
+        const activated = this.applyMobileSessionTabNavigation(
           this.getMobileSessionTabsForWorktree(worktreeId),
           tab.id,
           navigation,
           opts.clientNavigationId
         )
+        return startupCwdFallback ? { ...activated, startupCwdFallback } : activated
       }
       const callerSnapshot = this.getMobileSessionTabsForWorktree(
         worktreeId,

@@ -73,10 +73,18 @@ describe('OrcaRuntimeService terminal startup cwd', () => {
     )
   })
 
-  it('reveals main-spawned terminals with their nested startup cwd', async () => {
+  it.each([false, true])('reveals the saved cwd with fallback=%s', async (fallback) => {
     const runtime = new OrcaRuntimeService()
     stubLaunchScope(runtime)
-    const spawn = vi.fn().mockResolvedValue({ id: 'pty-1' })
+    const spawn = vi.fn().mockResolvedValue({
+      id: 'pty-1',
+      ...(fallback
+        ? {
+            startupCwdFallback: { kind: 'worktree', cwd: '/repo/app' },
+            savedStartupCwd: '/repo/app/packages/web'
+          }
+        : {})
+    })
     const revealTerminalSession = vi.fn().mockResolvedValue({ tabId: 'tab-1' })
     runtime.setPtyController({
       spawn,

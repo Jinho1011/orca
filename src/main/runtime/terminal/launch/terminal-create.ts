@@ -263,7 +263,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
             await this.notifier.revealTerminalSession(workspace.id, {
               ptyId: result.id,
               title: launchOpts.title ?? null,
-              ...(cwd !== workspace.path ? { cwd } : {}),
+              ...(savedStartupCwd !== workspace.path ? { cwd: savedStartupCwd } : {}),
               ...(effectiveLaunchConfig ? { launchConfig: effectiveLaunchConfig } : {}),
               ...(launchToken ? { launchToken } : {}),
               ...(launchOpts.launchAgent ? { launchAgent: launchOpts.launchAgent } : {}),

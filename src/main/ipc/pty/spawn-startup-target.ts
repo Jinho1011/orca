@@ -19,7 +19,10 @@ import type { PtySpawnResult } from '../../providers/pty-provider-contract'
 import { normalizeWindowsTerminalCwd } from '../../providers/windows-shell-args'
 import { wslUncDirectoryExistsAsync } from '../../wsl'
 import { getCodexSelectionTargetForPty } from './host-env/codex-home'
-import { localStartupCwdDirectoryExists } from './host-env/startup-cwd-directory-exists'
+import {
+  localStartupCwdDirectoryExists,
+  probeLocalStartupCwdDirectory
+} from './host-env/startup-cwd-directory-exists'
 
 // TEMPORARY (row 13b removes it): the window uses the renderer's runtime; the host reads the store.
 export type PtySpawnProjectRuntimeSource =
@@ -31,6 +34,7 @@ export type PtySpawnStartupTarget = {
   /** Already proven to exist by the WSL probe. */
   prevalidatedCwd?: string
   startupCwdFallback?: StartupCwdFallback
+  correctStartupCwd?: string
   /** The cwd before any fallback; a reattach keeps it as the saved start folder. */
   requestedCwd: string | undefined
   terminalRuntimeOptions: LocalWindowsTerminalRuntimeOptions
@@ -72,7 +76,11 @@ export async function resolvePtySpawnStartupTarget(
       process.env.COMSPEC || 'powershell.exe'
     )
   const startup = args.preAdopted
-    ? { cwd: args.resolveStartupCwd(args.worktreeId, args.cwd) }
+    ? {
+        cwd: args.resolveStartupCwd(args.worktreeId, args.cwd),
+        startupCwdFallback: undefined,
+        correctStartupCwd: undefined
+      }
     : await resolveStartupCwdWithFallback(args, terminalRuntimeOptions)
   const expectedWslDistro =
     resolveWslSessionContext({
@@ -109,7 +117,12 @@ export function startupCwdFallbackOutcome(
 async function resolveStartupCwdWithFallback(
   { worktreeId, resolveStartupCwd, ...args }: PtySpawnStartupArgs,
   runtimeOptions: LocalWindowsTerminalRuntimeOptions
-): Promise<Pick<PtySpawnStartupTarget, 'cwd' | 'prevalidatedCwd' | 'startupCwdFallback'>> {
+): Promise<
+  Pick<
+    PtySpawnStartupTarget,
+    'cwd' | 'prevalidatedCwd' | 'startupCwdFallback' | 'correctStartupCwd'
+  >
+> {
   const isPosixStartupCwd = args.cwd?.startsWith('/') === true
   const startupWorkspaceCwd = isPosixStartupCwd ? resolveStartupCwd(worktreeId, '.') : undefined
   const initiallyResolvedStartupCwd = isPosixStartupCwd
@@ -150,21 +163,26 @@ async function resolveStartupCwdWithFallback(
   const allowMissingCwdFallback =
     !wslRuntimeOwnsStartupCwd || (wslStartupCwdExists === false && wslWorkspaceCwdExists === true)
   let didFallbackToWorkspaceRootCwd = false
+  let missingCwdProvenAbsent = false
   const cwd = resolveStartupCwd(
     worktreeId,
     args.cwd,
     allowMissingCwdFallback
       ? {
-          directoryExists: (path) =>
-            startupWslContext &&
-            wslStartupCwdExists === false &&
-            path === initiallyResolvedStartupCwd
-              ? false
-              : startupWslContext && path === startupWorkspaceCwd
-                ? wslWorkspaceCwdExists === true
-                : localStartupCwdDirectoryExists(
-                    process.platform === 'win32' ? normalizeWindowsTerminalCwd(path) : path
-                  ),
+          directoryExists: (path) => {
+            const verdict =
+              startupWslContext && path === initiallyResolvedStartupCwd
+                ? wslStartupCwdExists
+                : startupWslContext && path === startupWorkspaceCwd
+                  ? wslWorkspaceCwdExists
+                  : isWslUncPath(path)
+                    ? true
+                    : probeLocalStartupCwdDirectory(
+                        process.platform === 'win32' ? normalizeWindowsTerminalCwd(path) : path
+                      )
+            missingCwdProvenAbsent ||= verdict === false
+            return verdict === true
+          },
           onFallbackToWorkspaceRoot: () => {
             didFallbackToWorkspaceRootCwd = true
           }
@@ -177,6 +195,7 @@ async function resolveStartupCwdWithFallback(
   return {
     cwd,
     prevalidatedCwd,
+    correctStartupCwd: didFallbackToWorkspaceRootCwd && missingCwdProvenAbsent ? cwd : undefined,
     startupCwdFallback: didFallbackToWorkspaceRootCwd && cwd ? { kind: 'worktree', cwd } : undefined
   }
 }

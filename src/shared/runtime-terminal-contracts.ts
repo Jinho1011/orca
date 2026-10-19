@@ -1,7 +1,4 @@
-import type {
-  AgentProviderSessionMetadata,
-  SleepingAgentLaunchConfig
-} from './agent-session-resume'
+import type * as AgentSessionResume from './agent-session-resume'
 import type { StartupCommandDelivery } from './codex-startup-delivery'
 import type { ExecutionHostId } from './execution-host'
 import type { PtyIncarnationId } from './pty-incarnation'
@@ -251,8 +248,8 @@ type RuntimeTerminalCreateBaseRequestPayload = {
   cwd?: string
   env?: Record<string, string>
   envToDelete?: string[]
-  launchConfig?: SleepingAgentLaunchConfig
-  resumeProviderSession?: AgentProviderSessionMetadata
+  launchConfig?: AgentSessionResume.SleepingAgentLaunchConfig
+  resumeProviderSession?: AgentSessionResume.AgentProviderSessionMetadata
   launchToken?: string
   launchAgent?: TuiAgent
   viewMode?: 'terminal' | 'chat'
@@ -291,6 +288,8 @@ export type RuntimeTerminalCreate = {
   processId?: number
   /** Host-internal: the requested folder was gone, so the process started at the workspace root. */
   startupCwdFallback?: StartupCwdFallback
+  /** Host-internal saved-folder decision; excluded by RPC result projection. */
+  savedStartupCwd?: string
 }
 
 export type RuntimeTerminalSplit = {

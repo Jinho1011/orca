@@ -10,12 +10,11 @@ import { clearReplacedPaneBinding } from './replaced-pane-binding'
 import type { PtyBindingSourceExpectation } from './store'
 
 import type { StoreRuntimeState } from './store-runtime-state'
-import type { SessionHostPartitionOperations } from './session-host-partitions'
+import { resolveHostId, type SessionHostPartitionOperations } from './session-host-partitions'
 import {
   withdrawUnstartedPane,
   type UnstartedPaneKept
 } from '../terminal-topology/unstarted-pane-withdraw'
-import { resolveHostId } from './session-host-partitions'
 import { evaluatePtyBindingFastLane } from './pty-binding-fast-lane'
 import { ptyBindingIsRefused } from './pty-binding-refusals'
 import { startPtyBindingSpan, type PtyBindingOrigin, type PtyBindingSpan } from './pty-binding-span'
@@ -62,6 +61,8 @@ export type PersistPtyBindingArgs = {
   ptyId: string
   incarnationId?: string
   startupCwd?: string
+  /** Proven host fallback correction; ordinary binds only seed new tabs. */
+  correctStartupCwd?: string
   expectedBinding?: { ptyId: string; incarnationId?: string }
   expectedSourceBinding?: PtyBindingSourceExpectation
   /**

@@ -274,4 +274,26 @@ describe('placement on the binding write is inert', () => {
     ).resolves.toBe(false)
     expect(store.getWorkspaceSession()).toEqual(before)
   })
+  it('corrects an existing saved folder even when the PTY binding already matches', async () => {
+    const { store, readState } = await fixture()
+    const session = store.getWorkspaceSession()
+    const tab = session.tabsByWorktree[LOCAL_WORKTREE].find((tab) => tab.id === 'tab-local')!
+    tab.startupCwd = '/fixture/local/deleted'
+    store.setWorkspaceSession(session)
+    const leafId = firstLayoutLeafId(session.terminalLayoutsByTabId['tab-local']?.root ?? null)!
+    const binding = { worktreeId: LOCAL_WORKTREE, tabId: 'tab-local', leafId, ptyId: 'pty-correct' }
+    await store.persistPtyBinding(binding)
+    await store.persistPtyBinding({ ...binding, correctStartupCwd: '/fixture/local' })
+    await store.flushPendingOrThrowAsync()
+    expect(
+      store
+        .getWorkspaceSession()
+        .tabsByWorktree[LOCAL_WORKTREE].find((tab) => tab.id === 'tab-local')?.startupCwd
+    ).toBe('/fixture/local')
+    expect(
+      readState().workspaceSession?.tabsByWorktree[LOCAL_WORKTREE].find(
+        (tab) => tab.id === 'tab-local'
+      )?.startupCwd
+    ).toBe('/fixture/local')
+  })
 })

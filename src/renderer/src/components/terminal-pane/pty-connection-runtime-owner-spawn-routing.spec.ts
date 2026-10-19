@@ -166,6 +166,7 @@ export function registerPtyConnectionRuntimeOwnerSpawnRoutingTests(): void {
         'owner-runtime',
         expect.any(Object)
       )
+      expect(createdTransportOptions[0]?.cwdFallback).toBeUndefined()
       expect(createdTransportOptions[0]?.agentArgsOverride).toBe('--profile recipe')
       expect(transport.connect).toHaveBeenCalled()
     })
@@ -204,6 +205,7 @@ export function registerPtyConnectionRuntimeOwnerSpawnRoutingTests(): void {
 
       expect(createRemoteRuntimePtyTransport).not.toHaveBeenCalled()
       expect(createIpcPtyTransport).toHaveBeenCalled()
+      expect(createdTransportOptions[0]).not.toHaveProperty('cwdFallback')
       expect(transport.connect).toHaveBeenCalled()
     })
 

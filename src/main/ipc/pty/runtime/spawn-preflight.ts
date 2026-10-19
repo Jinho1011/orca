@@ -76,6 +76,7 @@ export async function prepareRuntimePtySpawn(
   ctx.requestedCwd = target.requestedCwd
   ctx.prevalidatedCwd = target.prevalidatedCwd
   ctx.startupCwdFallback = target.startupCwdFallback
+  ctx.correctStartupCwd = target.correctStartupCwd
   ctx.terminalRuntimeOptions = target.terminalRuntimeOptions
   ctx.daemonShellOverride = ctx.terminalRuntimeOptions.shellOverride
   ctx.expectedWslDistro = target.expectedWslDistro

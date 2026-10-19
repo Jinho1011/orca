@@ -142,7 +142,12 @@ describe('OrcaRuntimeService terminal startup cwd', () => {
     stubLaunchScope(runtime)
     const spawn = vi.fn().mockResolvedValue({
       id: 'pty-1',
-      ...(c.fallback ? { startupCwdFallback: { kind: 'worktree' as const, cwd: '/repo/app' } } : {})
+      ...(c.fallback
+        ? {
+            startupCwdFallback: { kind: 'worktree' as const, cwd: '/repo/app' },
+            savedStartupCwd: '/repo/app'
+          }
+        : {})
     })
     runtime.setPtyController({
       spawn,

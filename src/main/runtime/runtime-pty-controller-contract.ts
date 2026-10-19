@@ -117,6 +117,7 @@ export type RuntimePtyController = {
     agentSessionEnsure?: AgentSessionClaimedSpawnResult
     /** The host started this process at the workspace root because the requested folder is gone. */
     startupCwdFallback?: StartupCwdFallback
+    savedStartupCwd?: string
   }>
   /** The local terminal owner's automatic-restore state; null when it has no fork gate. */
   getAutomaticWorkStatus?(): Promise<AutomaticWorkStatus | null>

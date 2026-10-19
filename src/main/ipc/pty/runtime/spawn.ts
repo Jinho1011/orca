@@ -29,8 +29,10 @@ function toRuntimeSpawnReply(result: {
   stablePaneOwner?: { handle: string; tabId: string; leafId: string }
   agentSessionEnsure?: AgentSessionClaimedSpawnResult
   startupCwdFallback?: StartupCwdFallback
+  savedStartupCwd?: string
 }) {
   return {
+    savedStartupCwd: result.savedStartupCwd,
     id: result.id,
     ...(result.incarnationId ? { incarnationId: result.incarnationId } : {}),
     ...(typeof result.wslDistro === 'string' ? { wslDistro: result.wslDistro } : {}),

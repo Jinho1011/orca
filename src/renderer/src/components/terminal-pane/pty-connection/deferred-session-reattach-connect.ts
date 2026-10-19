@@ -1,3 +1,6 @@
+import { writeTerminalOutput } from '@/lib/pane-manager/pane-terminal-output-scheduler'
+import { STARTUP_CWD_FALLBACK_NOTICE } from './startup-cwd-fallback-notice'
+import { shouldWritePtyOutputForeground } from './foreground-output-scan'
 import { isRemoteRuntimePtyId } from '../../../../../shared/remote-runtime-pty-id'
 import { warnTerminalLifecycleAnomaly } from '../terminal-lifecycle-diagnostics'
 import { isSshSessionGoneError, recordPtyConnectDiagnostic } from './pty-connect-limits'
@@ -8,7 +11,6 @@ import { holdForNewerDaemon } from './newer-daemon-hold-pane'
 import { NEWER_DAEMON_HOLD_ERROR } from '../../../../../shared/newer-daemon-hold'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../shared/layout-owner-switch'
 import { holdInPlaceResumeUntilSettled } from './in-place-resume-hold'
-import { writeStartupCwdFallbackNotice } from './startup-cwd-fallback-notice'
 
 import {
   awaitAgentStatusStartupSnapshot,
@@ -185,13 +187,16 @@ function connectDeferredSessionReattach(
         coldRestoreStartup,
         outputCallbacks.generation
       )
-      if (accepted) {
-        // After the restore paint and before held live bytes, so the line reads in order.
-        writeStartupCwdFallbackNotice(
-          session,
-          session.transport.getPtyId() ?? deferredReattachSessionId,
-          Boolean(result && typeof result === 'object' && result.startupCwdFallback)
-        )
+      if (
+        accepted &&
+        isCurrentReattach() &&
+        result &&
+        typeof result === 'object' &&
+        result.startupCwdFallback
+      ) {
+        writeTerminalOutput(session.pane.terminal, STARTUP_CWD_FALLBACK_NOTICE, {
+          foreground: shouldWritePtyOutputForeground(session.deps.isVisibleRef.current)
+        })
       }
       session.finishReattachLiveDataDeferral(accepted, outputCallbacks.generation)
       const gen = await preSignalPromise

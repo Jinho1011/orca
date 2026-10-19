@@ -126,10 +126,8 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
         }
         let result: Awaited<ReturnType<NonNullable<dependencies.RuntimePtyController['spawn']>>>
         try {
-          launchOpts.onPtySpawnDispatched?.({
-            launchConfig: effectiveLaunchConfig,
-            launchAgent: launchOpts.launchAgent
-          })
+          const { launchAgent } = launchOpts
+          launchOpts.onPtySpawnDispatched?.({ launchConfig: effectiveLaunchConfig, launchAgent })
           result = await dependencies.spawnInAdmittedPane(this.store, this.ptyController, {
             ...initialSize,
             cwd,
@@ -190,6 +188,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
           reportPtySpawnCommitted()
         }
         restoreHint.consume()
+        const savedStartupCwd = result.savedStartupCwd ?? cwd
         cwd = result.startupCwdFallback?.cwd ?? cwd
         // Why here: refused before a handle, snapshot or reveal could pose the live PTY as new.
         const adoptedStablePane = dependencies.admitStablePaneAdoption(result, launchOpts)
@@ -254,7 +253,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
             activate: presentation === 'focused',
             selectIfNoActiveTab: presentation !== 'background',
             ...(launchOpts.viewMode ? { viewMode: launchOpts.viewMode } : {}),
-            ...(cwd !== workspace.path ? { startupCwd: cwd } : {})
+            ...(savedStartupCwd !== workspace.path ? { startupCwd: savedStartupCwd } : {})
           })
         }
         let surface: dependencies.RuntimeTerminalCreate['surface'] = 'background'
@@ -265,7 +264,6 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
               ptyId: result.id,
               title: launchOpts.title ?? null,
               ...(cwd !== workspace.path ? { cwd } : {}),
-              ...(result.startupCwdFallback ? { startupCwdFallback: true as const } : {}),
               ...(effectiveLaunchConfig ? { launchConfig: effectiveLaunchConfig } : {}),
               ...(launchToken ? { launchToken } : {}),
               ...(launchOpts.launchAgent ? { launchAgent: launchOpts.launchAgent } : {}),
@@ -286,6 +284,7 @@ export abstract class OrcaRuntimeWithCreateTerminal extends OrcaRuntimeWithTermi
         }
         return {
           handle,
+          savedStartupCwd,
           tabId,
           paneKey,
           ptyId: result.id,

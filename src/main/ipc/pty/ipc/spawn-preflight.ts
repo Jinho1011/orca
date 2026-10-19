@@ -100,6 +100,7 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
   ctx.cwd = target.cwd
   ctx.prevalidatedCwd = target.prevalidatedCwd
   ctx.requestedCwd = target.requestedCwd
+  ctx.correctStartupCwd = target.correctStartupCwd
   ctx.startupCwdFallback = target.startupCwdFallback
   ctx.terminalRuntimeOptions = target.terminalRuntimeOptions
   ctx.expectedWslDistro = target.expectedWslDistro

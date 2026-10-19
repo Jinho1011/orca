@@ -43,7 +43,6 @@ export const uiTerminalAndSessionTabsApi = {
       shellOverride?: string
       title?: string
       ptyId?: string
-      startupCwdFallback?: true
       activate?: boolean
       focus?: boolean
       presentation?: RuntimeTerminalPresentation
@@ -74,7 +73,6 @@ export const uiTerminalAndSessionTabsApi = {
         shellOverride?: string
         title?: string
         ptyId?: string
-        startupCwdFallback?: true
         activate?: boolean
         focus?: boolean
         presentation?: RuntimeTerminalPresentation

@@ -28,6 +28,7 @@ export type PtyIpcSpawnState = {
   cwd: string | undefined
   prevalidatedCwd: string | undefined
   requestedCwd: string | undefined
+  correctStartupCwd?: string
   startupCwdFallback: StartupCwdFallback | undefined
   earlyStablePaneOwner: StablePaneOwner | null
   earlyWorktreeId: string | undefined

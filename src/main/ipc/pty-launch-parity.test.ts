@@ -554,8 +554,45 @@ describe('spawn preflight: where the lanes differ today', () => {
     expect(facts.host).toMatchObject({ cwd: POSIX_PATH, created: { startupCwdFallback: fallback } })
     expect(lanes.reveal).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ startupCwdFallback: true })
+      expect.not.objectContaining({ startupCwdFallback: expect.anything() })
     )
+  })
+
+  it('allows fallback for an unreadable request without healing its saved folder or mobile snapshot', async () => {
+    setMainPlatform('darwin')
+    const unreadable = `${POSIX_PATH}/private`
+    statSyncMock.mockImplementation((target: string) => {
+      if (target === unreadable) {
+        throw Object.assign(new Error('EACCES'), { code: 'EACCES' })
+      }
+      return { isDirectory: () => true, mode: 0o755 }
+    })
+    const lanes = startParityLanes(suite, { workspace: POSIX_REPO })
+    const facts = await spawnBoth(
+      lanes,
+      POSIX_REPO,
+      { cwd: unreadable },
+      { cwd: unreadable, persistHostSessionBinding: true }
+    )
+    expect(facts.host).toMatchObject({
+      cwd: POSIX_PATH,
+      created: {
+        savedStartupCwd: unreadable,
+        startupCwdFallback: { kind: 'worktree', cwd: POSIX_PATH }
+      }
+    })
+    expect(lanes.persistPtyBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ startupCwd: unreadable })
+    )
+    for (const [binding] of lanes.persistPtyBinding.mock.calls) {
+      expect(binding).not.toHaveProperty('correctStartupCwd')
+    }
+    const snapshot = await lanes.runtime.listMobileSessionTabs(
+      `id:${launchWorkspaceId(POSIX_REPO)}`
+    )
+    expect(snapshot.tabs.find((tab) => tab.type === 'terminal')).toMatchObject({
+      startupCwd: unreadable
+    })
   })
 
   it.each([

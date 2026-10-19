@@ -20,9 +20,8 @@ import { parseTerminalPanePlacement } from '../../../../shared/terminal-pane-pla
 
 export async function persistPtyIpcSpawnCommit(ctx: PtyIpcSpawnState): Promise<PtyGrid> {
   const args = ctx.args
-  // Why: only a proven fallback start heals the saved folder; an attach keeps what was asked for.
   const startupCwd = startupCwdFallbackOutcome(ctx.startupCwdFallback, ctx.result)
-    ? ctx.cwd
+    ? (ctx.correctStartupCwd ?? ctx.requestedCwd)
     : ctx.requestedCwd
   try {
     ctx.stablePaneBindingPersisted = await persistAdmittedStablePaneBinding({

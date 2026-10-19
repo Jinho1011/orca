@@ -35,6 +35,7 @@ export type RuntimePtySpawnState = {
   requestedCwd: string | undefined
   prevalidatedCwd: string | undefined
   startupCwdFallback: StartupCwdFallback | undefined
+  correctStartupCwd?: string
   provider: IPtyProvider
   isClaudeLaunch: boolean
   terminalRuntimeOptions: { shellOverride?: string; terminalWindowsWslDistro?: string | null }

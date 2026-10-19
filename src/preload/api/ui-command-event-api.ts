@@ -196,7 +196,6 @@ export type UiCommandEventApi = {
       shellOverride?: string
       title?: string
       ptyId?: string
-      startupCwdFallback?: true
       activate?: boolean
       focus?: boolean
       presentation?: RuntimeTerminalPresentation

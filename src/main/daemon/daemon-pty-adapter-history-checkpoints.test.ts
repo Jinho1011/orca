@@ -14,6 +14,7 @@ import {
 } from './daemon-pty-adapter-test-harness'
 import type * as DaemonHealthModule from './daemon-health'
 import type * as DaemonTccAttributionModule from './daemon-tcc-attribution'
+import * as startupCwdProbe from '../ipc/pty/host-env/startup-cwd-directory-exists'
 
 const { getMacDaemonSystemResolverHealthMock, getMacDaemonTccAttributionHealthMock } = vi.hoisted(
   () => ({
@@ -762,8 +763,9 @@ describe('DaemonPtyAdapter (IPtyProvider)', () => {
 
     // The recovered folder wins while it exists; one deleted since the crash yields to the request's.
     it.each([
-      { deleted: false, source: 'recovered-history' },
-      { deleted: true, source: 'request' }
+      { deleted: false, source: 'recovered-history', inconclusive: false },
+      { deleted: false, source: 'recovered-history', inconclusive: true },
+      { deleted: true, source: 'request', inconclusive: false }
     ])('returns cold restore data after an unclean shutdown (deleted: $deleted)', async (c) => {
       // Simulate a previous daemon crash: write history files without endedAt
       const sessionId = 'cold-restore-test'
@@ -785,7 +787,11 @@ describe('DaemonPtyAdapter (IPtyProvider)', () => {
 
       historyAdapter = new DaemonPtyAdapter({ socketPath, tokenPath, historyPath: historyDir })
 
+      const probe = c.inconclusive
+        ? vi.spyOn(startupCwdProbe, 'probeRecoveredStartupCwdDirectory').mockResolvedValue(null)
+        : undefined
       const result = await historyAdapter.spawn({ cols: 80, rows: 24, sessionId, cwd: historyDir })
+      probe?.mockRestore()
       expect(result.id).toBe(sessionId)
       expect(result.coldRestore).toBeDefined()
       expect(result.coldRestore!.scrollback).toContain('Server running')

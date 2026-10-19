@@ -67,8 +67,6 @@ export type RuntimeNotifier = {
       ptyId: string
       title?: string | null
       cwd?: string
-      /** The host started this PTY at the workspace root because its folder is gone. */
-      startupCwdFallback?: true
       launchConfig?: SleepingAgentLaunchConfig
       launchToken?: string
       launchAgent?: TuiAgent

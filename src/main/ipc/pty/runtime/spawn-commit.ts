@@ -49,8 +49,9 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
   const args = ctx.args
   admitPtyReattachOwnership(ctx.deps.runtime, ctx.result)
   const startupCwdFallback = startupCwdFallbackOutcome(ctx.startupCwdFallback, ctx.result)
-  // Why: only a proven fallback start heals the saved folder; an attach keeps what was asked for.
-  const savedStartupCwd = startupCwdFallback ? ctx.cwd : ctx.requestedCwd
+  // Fallback may follow an access error; only proven absence authorizes changing the saved folder.
+  const correctStartupCwd = startupCwdFallback ? ctx.correctStartupCwd : undefined
+  const savedStartupCwd = correctStartupCwd ?? ctx.requestedCwd
   const providerReattachLaunchIdentity = admitProviderReattachLaunchIdentity(ctx.result)
   if (
     isNativeWindowsLocalPtySpawn({
@@ -70,7 +71,8 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
       owner: ctx.stablePaneOwner,
       result: ctx.result,
       worktreeId: ctx.hostSessionBinding?.worktreeId,
-      startupCwd: savedStartupCwd
+      startupCwd: savedStartupCwd,
+      correctStartupCwd
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'terminal_pane_owner_changed') {
@@ -152,6 +154,7 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
         mayCreate: false,
         ...(ctx.result.incarnationId ? { incarnationId: ctx.result.incarnationId } : {}),
         ...(savedStartupCwd ? { startupCwd: savedStartupCwd } : {}),
+        ...(correctStartupCwd ? { correctStartupCwd } : {}),
         ...(expectedSourceBinding ? { expectedSourceBinding } : {}),
         ...(placement ? { placement } : {}),
         origin: spawnCommitBindingOrigin(ctx.result, expectedSourceBinding)
@@ -287,6 +290,7 @@ async function commitReservedRuntimePtySpawn(ctx: RuntimePtySpawnState) {
         : {})
   })
   const response = {
+    savedStartupCwd,
     id: ctx.result.id,
     ...(ctx.result.incarnationId ? { incarnationId: ctx.result.incarnationId } : {}),
     ...(ctx.stablePaneOwner && (ctx.stablePaneOwner.handle || args.preAllocatedHandle)

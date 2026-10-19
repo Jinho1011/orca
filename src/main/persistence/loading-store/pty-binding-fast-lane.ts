@@ -20,12 +20,14 @@ export type PtyBindingFastLaneMiss =
   | 'tombstone'
   | 'inactive_worktree'
   | 'not_durable'
+  | 'startup_cwd'
 
 export type PtyBindingFastLaneRequest = {
   tabId: string
   leafId: string
   ptyId: string
   incarnationId?: string
+  correctStartupCwd?: string
   expectedSourceBinding?: unknown
 }
 
@@ -57,6 +59,9 @@ export function evaluatePtyBindingFastLane(
     (candidate) => candidate.id === args.tabId
   )
   const layout = session.terminalLayoutsByTabId?.[args.tabId]
+  if (args.correctStartupCwd !== undefined && tab?.startupCwd !== args.correctStartupCwd) {
+    misses.push('startup_cwd')
+  }
   if (!tab) {
     misses.push('tab_missing')
   } else if (

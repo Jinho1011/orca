@@ -285,15 +285,9 @@ describe('placement on the binding write is inert', () => {
     await store.persistPtyBinding(binding)
     await store.persistPtyBinding({ ...binding, correctStartupCwd: '/fixture/local' })
     await store.flushPendingOrThrowAsync()
-    expect(
-      store
-        .getWorkspaceSession()
-        .tabsByWorktree[LOCAL_WORKTREE].find((tab) => tab.id === 'tab-local')?.startupCwd
-    ).toBe('/fixture/local')
-    expect(
-      readState().workspaceSession?.tabsByWorktree[LOCAL_WORKTREE].find(
-        (tab) => tab.id === 'tab-local'
-      )?.startupCwd
-    ).toBe('/fixture/local')
+    const savedTab = (saved: typeof session | undefined) =>
+      saved?.tabsByWorktree[LOCAL_WORKTREE].find((tab) => tab.id === 'tab-local')
+    expect(savedTab(store.getWorkspaceSession())?.startupCwd).toBe('/fixture/local')
+    expect(savedTab(readState().workspaceSession)?.startupCwd).toBe('/fixture/local')
   })
 })

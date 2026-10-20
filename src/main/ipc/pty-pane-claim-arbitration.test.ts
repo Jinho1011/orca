@@ -507,7 +507,7 @@ describe('registerPtyHandlers', () => {
     await vi.waitFor(() => expect(providerSpawn).toHaveBeenCalledTimes(1))
     resolveSpawn({ id: 'pty-shared' })
     await expect(Promise.all([runtimeSpawn, rendererSpawn])).resolves.toEqual([
-      { id: 'pty-shared' },
+      { id: 'pty-shared', savedStartupCwd: '/tmp' },
       { id: 'pty-shared', isReattach: true }
     ])
     expect(providerSpawn).toHaveBeenCalledTimes(1)

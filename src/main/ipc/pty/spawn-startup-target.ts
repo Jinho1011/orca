@@ -151,7 +151,11 @@ async function resolveStartupCwdWithFallback(
     if (wslStartupCwdExists === true) {
       prevalidatedCwd = validationCwd
     }
-    if (wslStartupCwdExists === false && startupWorkspaceCwd) {
+    if (
+      wslStartupCwdExists !== true &&
+      (!isWslUncPath(validationCwd) || wslStartupCwdExists === false) &&
+      startupWorkspaceCwd
+    ) {
       wslWorkspaceCwdExists = isWslUncPath(startupWorkspaceCwd)
         ? await wslUncDirectoryExistsAsync(startupWorkspaceCwd)
         : localStartupCwdDirectoryExists(startupWorkspaceCwd)
@@ -161,7 +165,7 @@ async function resolveStartupCwdWithFallback(
     }
   }
   const allowMissingCwdFallback =
-    !wslRuntimeOwnsStartupCwd || (wslStartupCwdExists === false && wslWorkspaceCwdExists === true)
+    !wslRuntimeOwnsStartupCwd || (wslStartupCwdExists !== true && wslWorkspaceCwdExists === true)
   let didFallbackToWorkspaceRootCwd = false
   let missingCwdProvenAbsent = false
   const cwd = resolveStartupCwd(

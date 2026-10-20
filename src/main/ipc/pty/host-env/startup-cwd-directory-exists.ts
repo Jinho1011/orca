@@ -2,12 +2,12 @@ import { statSync } from 'node:fs'
 import { isWslUncPath } from '../../../../shared/wsl-paths'
 import { wslUncDirectoryExistsAsync } from '../../../wsl'
 
-export function localStartupCwdDirectoryExists(path: string): boolean {
+export function localStartupCwdDirectoryExists(path: string): boolean | null {
   // Why: Win32 statSync on \\wsl.localhost 9P shares can falsely report ENOENT; defer to the provider's WSL-aware validation.
   if (isWslUncPath(path)) {
     return true
   }
-  return probeLocalStartupCwdDirectory(path) === true
+  return probeLocalStartupCwdDirectory(path)
 }
 
 export function probeLocalStartupCwdDirectory(path: string): boolean | null {

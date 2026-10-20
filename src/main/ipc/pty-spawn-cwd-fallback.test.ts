@@ -520,17 +520,17 @@ describe('PTY WSL working-directory validation', () => {
       return { isDirectory: () => true, mode: 0o755, size: 1 }
     })
 
-    const result = (await handlers.get('pty:spawn')!(null, {
+    const result = await handlers.get('pty:spawn')!(null, {
       cols: 80,
       rows: 24,
       cwd: '/repo/app/deleted-folder',
       sessionId: 'session-1',
       worktreeId: 'repo-1::/repo/app'
-    })) as { startupCwdFallback?: unknown }
+    })
 
     const [, , options] = spawnMock.mock.calls.at(-1) as [string, string[], { cwd: string }]
     expect(options.cwd).toBe('/repo/app')
-    expect(result.startupCwdFallback).toEqual({ kind: 'worktree', cwd: '/repo/app' })
+    expect(result).toHaveProperty('startupCwdFallback', { kind: 'worktree', cwd: '/repo/app' })
   })
   it('rejects missing WSL worktree cwd instead of validating only the fallback Windows cwd', async () => {
     const originalPlatform = process.platform

@@ -1,18 +1,10 @@
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { isWslUncPath } from '../../../../shared/wsl-paths'
 import { wslUncDirectoryExistsAsync } from '../../../wsl'
 
-export function localStartupCwdDirectoryExists(path: string): boolean | null {
-  // Why: Win32 statSync on \\wsl.localhost 9P shares can falsely report ENOENT; defer to the provider's WSL-aware validation.
-  if (isWslUncPath(path)) {
-    return true
-  }
-  return probeLocalStartupCwdDirectory(path)
-}
-
-export function probeLocalStartupCwdDirectory(path: string): boolean | null {
+export async function probeLocalStartupCwdDirectory(path: string): Promise<boolean | null> {
   try {
-    return statSync(path).isDirectory()
+    return (await stat(path)).isDirectory()
   } catch (error) {
     // Saved-folder correction and recovered-path relocation require proof of absence.
     return error &&
@@ -25,7 +17,5 @@ export function probeLocalStartupCwdDirectory(path: string): boolean | null {
 }
 
 export function probeRecoveredStartupCwdDirectory(path: string): Promise<boolean | null> {
-  return isWslUncPath(path)
-    ? wslUncDirectoryExistsAsync(path)
-    : Promise.resolve(probeLocalStartupCwdDirectory(path))
+  return isWslUncPath(path) ? wslUncDirectoryExistsAsync(path) : probeLocalStartupCwdDirectory(path)
 }

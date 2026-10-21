@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as fs from 'node:fs'
+import * as fs from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolvePtySpawnStartupTarget } from '../../ipc/pty/spawn-startup-target'
 import { resolveTerminalStartupCwd } from '../../../shared/terminal-startup-cwd'
@@ -12,7 +12,7 @@ import { fixture } from './profile-state-delayed-authority-fixture'
 import type * as AgreementModule from '../terminal-topology/terminal-pane-placement-agreement'
 import type { PersistPtyBindingArgs } from './pty-binding-persistence'
 
-vi.mock('node:fs', { spy: true })
+vi.mock('node:fs/promises', { spy: true })
 // rollback build (switch-off) — delete with the switch-off code post-flip
 vi.mock('../../../shared/layout-owner-switch', () => ({ ORCA_LAYOUT_OWNER_IS_MAIN: false }))
 
@@ -294,14 +294,9 @@ describe('placement on the binding write is inert', () => {
     const binding = { worktreeId: LOCAL_WORKTREE, tabId: 'tab-local', leafId, ptyId: 'pty-correct' }
     await store.persistPtyBinding(binding)
     const originalPlatform = process.platform
-    const directoryStat = fs.statSync(tmpdir())
-    const stat = vi
-      .spyOn(fs, 'statSync')
-      .mockClear()
-      .mockImplementation(() => directoryStat)
-    stat.mockImplementationOnce(() => {
-      throw Object.assign(new Error('access denied'), { code: 'EACCES' })
-    })
+    const directoryStat = await fs.stat(tmpdir())
+    const stat = vi.spyOn(fs, 'stat').mockClear().mockResolvedValue(directoryStat)
+    stat.mockRejectedValueOnce(Object.assign(new Error('access denied'), { code: 'EACCES' }))
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     try {
       const target = await resolvePtySpawnStartupTarget({

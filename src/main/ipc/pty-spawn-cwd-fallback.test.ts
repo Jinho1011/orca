@@ -35,6 +35,9 @@ vi.mock('../pwsh', () => import('./pty-ipc-mock-registry').then((m) => m.pwshMod
 vi.mock('../wsl', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).wslModuleMock(await importOriginal())
 )
+vi.mock('node:fs/promises', async (importOriginal) =>
+  (await import('./pty-ipc-mock-registry')).fsPromisesModuleMock(await importOriginal())
+)
 vi.mock('../telemetry/client', () =>
   import('./pty-ipc-mock-registry').then((m) => m.telemetryClientModuleMock())
 )
@@ -177,9 +180,7 @@ describe('registerPtyHandlers', () => {
     'keeps an existing POSIX startup cwd for the selected WSL runtime (%s)',
     async (startupCwd) => {
       const originalPlatform = process.platform
-      const providerSpawn = vi
-        .fn()
-        .mockResolvedValue({ id: 'pty-wsl-cwd', startupCwdSource: 'request' })
+      const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-wsl-cwd' })
       Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
       wslUncDirectoryExistsAsyncMock.mockResolvedValue(true)
       statSyncMock.mockImplementation((target: string) => {
@@ -270,9 +271,7 @@ describe('registerPtyHandlers', () => {
   })
   it('preserves a POSIX WSL cwd when the distro probe is inconclusive', async () => {
     const originalPlatform = process.platform
-    const providerSpawn = vi
-      .fn()
-      .mockResolvedValue({ id: 'pty-wsl-inconclusive-cwd', startupCwdSource: 'request' })
+    const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-wsl-inconclusive-cwd' })
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     wslUncDirectoryExistsAsyncMock.mockResolvedValue(null)
 
@@ -295,9 +294,7 @@ describe('registerPtyHandlers', () => {
   })
   it('preserves a POSIX cwd when WSL owns it but no distro can be resolved', async () => {
     const originalPlatform = process.platform
-    const providerSpawn = vi
-      .fn()
-      .mockResolvedValue({ id: 'pty-wsl-no-distro-cwd', startupCwdSource: 'request' })
+    const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-wsl-no-distro-cwd' })
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     _setWslCachesForTests({ available: true, distros: [] })
 
@@ -374,9 +371,7 @@ describe('PTY WSL working-directory validation', () => {
   })
   it('preserves a missing POSIX cwd when its WSL workspace root is also missing', async () => {
     const originalPlatform = process.platform
-    const providerSpawn = vi
-      .fn()
-      .mockResolvedValue({ id: 'pty-wsl-missing-root', startupCwdSource: 'request' })
+    const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-wsl-missing-root' })
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     wslUncDirectoryExistsAsyncMock.mockResolvedValue(false)
 
@@ -402,9 +397,7 @@ describe('PTY WSL working-directory validation', () => {
   })
   it('validates a /mnt drive cwd through its native Windows path', async () => {
     const originalPlatform = process.platform
-    const providerSpawn = vi
-      .fn()
-      .mockResolvedValue({ id: 'pty-wsl-mnt-cwd', startupCwdSource: 'request' })
+    const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-wsl-mnt-cwd' })
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     _setWslCachesForTests({ available: true, distros: ['Ubuntu'] })
 
@@ -465,9 +458,7 @@ describe('PTY WSL working-directory validation', () => {
   })
   it('probes Git Bash /c as its existing native drive root without falling back', async () => {
     const originalPlatform = process.platform
-    const providerSpawn = vi
-      .fn()
-      .mockResolvedValue({ id: 'pty-git-bash-cwd', startupCwdSource: 'request' })
+    const providerSpawn = vi.fn().mockResolvedValue({ id: 'pty-git-bash-cwd' })
     const worktreePath = 'C:/Users/alice/repo'
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
 

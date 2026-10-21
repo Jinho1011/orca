@@ -519,7 +519,7 @@ describe('registerPtyHandlers', () => {
     resolveSpawn({ id: 'pty-shared' })
     await expect(Promise.all([runtimeSpawn, rendererSpawn])).resolves.toEqual([
       { id: 'pty-shared', savedStartupCwd: '/tmp' },
-      { id: 'pty-shared', isReattach: true }
+      { id: 'pty-shared', isReattach: true, savedStartupCwd: '/tmp' }
     ])
     expect(providerSpawn).toHaveBeenCalledTimes(1)
     expect(store.bindingWrites).toHaveBeenCalledWith({

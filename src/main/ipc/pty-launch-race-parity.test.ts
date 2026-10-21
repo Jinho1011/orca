@@ -1,3 +1,12 @@
+import { launchWorkspaceId } from '../../shared/launch-parity-window-request.test-fixture'
+import { POSIX_PATH } from '../../shared/launch-parity-window-cases.test-fixture'
+import { statSyncMock } from './pty-ipc-mock-registry'
+import {
+  spawnBoth,
+  startParityLanes,
+  setMainPlatform,
+  restoreMainPlatform
+} from './pty-launch-parity.test-fixture'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type * as JcodeRuntimeDir from '../../shared/jcode-runtime-dir'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
@@ -74,15 +83,50 @@ const mintedFor = (worktreeId: string): string[] =>
 
 // Pins main's window lane (pty:spawn) and host lane (runtime controller) as the spawn-lane merge's baseline.
 describe('launch race parity, both spawn lanes', () => {
-  const { handlers, mainWindow, installDaemonTestProvider } = setupPtyIpcSuite()
+  const suite = setupPtyIpcSuite()
+  const { handlers, mainWindow, installDaemonTestProvider } = suite
+
+  it('allows fallback for an unreadable request without healing its saved folder or mobile snapshot', async () => {
+    setMainPlatform('darwin')
+    onTestFinished(restoreMainPlatform)
+    onTestFinished(vi.unstubAllEnvs)
+    const POSIX_REPO = { kind: 'repo', path: POSIX_PATH } as const
+    const unreadable = `${POSIX_PATH}/private`
+    statSyncMock.mockImplementation((target: string) => {
+      if (target === unreadable) {
+        throw Object.assign(new Error('EACCES'), { code: 'EACCES' })
+      }
+      return { isDirectory: () => true, mode: 0o755 }
+    })
+    const lanes = startParityLanes(suite, { workspace: POSIX_REPO })
+    const facts = await spawnBoth(
+      lanes,
+      POSIX_REPO,
+      { cwd: unreadable },
+      { cwd: unreadable, persistHostSessionBinding: true }
+    )
+    expect(facts.host).toMatchObject({
+      cwd: POSIX_PATH,
+      created: {
+        savedStartupCwd: unreadable,
+        startupCwdFallback: { kind: 'worktree', cwd: POSIX_PATH }
+      }
+    })
+    expect(lanes.persistPtyBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ startupCwd: unreadable })
+    )
+    for (const [binding] of lanes.persistPtyBinding.mock.calls) {
+      expect(binding).not.toHaveProperty('correctStartupCwd')
+    }
+    const snapshot = await lanes.runtime.listMobileSessionTabs(
+      `id:${launchWorkspaceId(POSIX_REPO)}`
+    )
+    expect(snapshot.tabs.find((tab) => tab.type === 'terminal')).toMatchObject({
+      startupCwd: unreadable
+    })
+  })
 
   describe('who owns the pane', () => {
-    // C6 picks one: the window joins before its setup and checks nothing; the host joins after and verifies.
-    const JOINED_UNVERIFIED_WINNER: Record<LaunchRaceLane, 'reattach' | 'refused'> = {
-      ipc: 'reattach',
-      runtime: 'refused'
-    }
-    const JOINER_PREPARES_ITS_OWN_LAUNCH: Record<LaunchRaceLane, number> = { ipc: 0, runtime: 1 }
     it.each(LAUNCH_RACE_LANES)(
       '%s lane: a spawn arriving while a window spawn is starting the pane joins it',
       async (lane) => {
@@ -114,17 +158,15 @@ describe('launch race parity, both spawn lanes', () => {
         onTestFinished(() => joinPaneSpawn.mockRestore())
         const joiner = lanes.spawn[lane]({ ...pane.args, command: 'claude' })
         if (lane === 'runtime') {
-          // Runtime preflight does filesystem work before it can join the reserved pane.
+          // Both lanes join before any fresh launch preparation.
           await vi.waitFor(() => expect(joinPaneSpawn).toHaveBeenCalledOnce())
         }
         finishSpawn()
 
         await expect(winner).resolves.toMatchObject({ id: 'pty-join-winner' })
-        await (JOINED_UNVERIFIED_WINNER[lane] === 'reattach'
-          ? expect(joiner).resolves.toMatchObject({ id: 'pty-join-winner', isReattach: true })
-          : expect(joiner).rejects.toThrow('terminal_pane_owner_unknown'))
+        await expect(joiner).resolves.toMatchObject({ id: 'pty-join-winner' })
         expect(spawn).toHaveBeenCalledOnce()
-        expect(auth.prepareClaudeAuth).toHaveBeenCalledTimes(JOINER_PREPARES_ITS_OWN_LAUNCH[lane])
+        expect(auth.prepareClaudeAuth).not.toHaveBeenCalled()
       }
     )
 
@@ -401,7 +443,7 @@ describe('launch race parity, both spawn lanes', () => {
           immediate: true,
           expectedIncarnationId: 'inc-1'
         })
-        expect(runtime.cancelPendingPtyRegistration).toHaveBeenCalledWith(ptyId, 'inc-1')
+        expect(runtime.cancelPendingPtyRegistration).toHaveBeenCalledWith(ptyId, 'inc-1', undefined)
       }
     )
 
@@ -432,7 +474,11 @@ describe('launch race parity, both spawn lanes', () => {
         await (EXITED_DURING_REGISTRATION[lane] === 'resolves'
           ? expect(spawn).resolves.toMatchObject({ id: ptyId, incarnationId: 'inc-exited' })
           : expect(spawn).rejects.toThrow('agent_session_exited_during_start'))
-        expect(runtime.cancelPendingPtyRegistration).toHaveBeenCalledWith(ptyId, 'inc-exited')
+        expect(runtime.cancelPendingPtyRegistration).toHaveBeenCalledWith(
+          ptyId,
+          'inc-exited',
+          undefined
+        )
         expect(runtime.noteTerminalSpawnCommit).not.toHaveBeenCalled()
         expect(runtime.reflowHeadlessTerminalToPtyGrid).not.toHaveBeenCalled()
       }

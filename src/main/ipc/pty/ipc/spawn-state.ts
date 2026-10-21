@@ -1,4 +1,6 @@
 import type { StartupCwdFallback } from '../../../../shared/startup-cwd-fallback'
+import type { PtyRegistrationClaim } from '../../../runtime/runtime-terminal-state-records'
+import type { PaneSpawnOperation } from '../pane/pane-spawn-operation'
 import type {
   IPtyProvider,
   PtySpawnOptions,
@@ -37,10 +39,12 @@ export type PtyIpcSpawnState = {
   replacedPaneOwner: ReplacedPaneOwner | null
   finishTerminalInstall: () => void
   result: PtySpawnResult
+  paneSpawnOperation?: PaneSpawnOperation
   stablePaneOwner: StablePaneOwner | null
   stablePaneBindingPersisted: boolean
   rejectedRegistrationCandidate: PtySpawnResult | null
   pendingRegistrationPtyId: string | null
+  pendingRegistrationClaim?: PtyRegistrationClaim
   reconciledSnapshotSeq: number | null
   snapshotKittyFlagsCoverReconciledSeq: boolean
   preparedProvisionalExecutionContext: boolean

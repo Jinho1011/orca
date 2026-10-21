@@ -89,7 +89,9 @@ describe('launch race parity, both spawn lanes', () => {
   it('allows fallback for an unreadable request without healing its saved folder or mobile snapshot', async () => {
     setMainPlatform('darwin')
     onTestFinished(restoreMainPlatform)
-    onTestFinished(vi.unstubAllEnvs)
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
     const POSIX_REPO = { kind: 'repo', path: POSIX_PATH } as const
     const unreadable = `${POSIX_PATH}/private`
     statSyncMock.mockImplementation((target: string) => {

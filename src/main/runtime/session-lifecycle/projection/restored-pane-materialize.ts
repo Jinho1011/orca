@@ -88,7 +88,7 @@ export abstract class OrcaRuntimeWithRestoredPaneStart extends OrcaRuntimeWithBu
     return reopenHeldPanes(panes, {
       isHeld: (pane) => isPublishedHeld(published, pane),
       stopNewerDaemons: () => reopenNewerDaemonTerminals().then((result) => result.reopened),
-      start: (pane) => this.ensureRestoredPaneStarted(pane)
+      start: async (pane) => (await this.ensureRestoredPaneStarted(pane))?.id ?? null
     })
   }
 
